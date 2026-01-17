@@ -11,6 +11,7 @@ class User(AbstractUser):
         ("biweekly", "Biweekly"),
         ("monthly", "Monthly"),
     ]
+    email = models.EmailField(unique=True)
     is_onboarded = models.BooleanField(default=False)
     check_in_frequency = models.CharField(
         max_length=20,
