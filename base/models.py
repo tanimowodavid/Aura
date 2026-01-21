@@ -22,4 +22,7 @@ class User(AbstractUser):
     next_check_in_at = models.DateTimeField(null=True, blank=True)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username"]
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+
+    def __str__(self):
+        return self.first_name + " " + self.last_name

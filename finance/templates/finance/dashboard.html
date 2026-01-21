@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Aura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span class="text-white font-bold text-lg">A</span>
+                </div>
+                <span class="text-xl font-semibold text-gray-800">Aura</span>
+            </div>
+            <a href="{% url 'base:logout' %}" class="text-gray-600 hover:text-gray-800 font-medium">
+                Logout
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Welcome Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Welcome back, {{ user.username }}! 👋</h1>
+            <p class="text-gray-600">Here's your financial snapshot</p>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <p class="text-sm font-medium text-gray-600 mb-2">Current Balance</p>
+                <p class="text-3xl font-bold text-blue-600">${{ profile.estimated_balance|floatformat:2 }}</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <p class="text-sm font-medium text-gray-600 mb-2">Primary Goal</p>
+                <p class="text-lg font-semibold text-gray-800">{{ profile.primary_goal }}</p>
+            </div>
+            
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <p class="text-sm font-medium text-gray-600 mb-2">Check-in Frequency</p>
+                <p class="text-lg font-semibold text-gray-800">{{ user.get_check_in_frequency_display }}</p>
+            </div>
+        </div>
+
+        <!-- Balance History Chart -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8 border border-gray-100">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Balance Over Time</h2>
+            <canvas id="balanceChart" class="w-full" style="max-height: 300px;"></canvas>
+        </div>
+
+        <!-- Check-in Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Last Check-in</h3>
+                {% if last_checkin %}
+                    <p class="text-sm text-gray-600 mb-2">{{ last_checkin.created_at|date:"F d, Y" }}</p>
+                    <p class="text-sm text-gray-700 mb-3"><strong>Focus:</strong> {{ last_checkin.focus_until_next }}</p>
+                    <p class="text-sm text-gray-700"><strong>Advice:</strong> {{ last_checkin.advice|truncatewords:20 }}</p>
+                {% else %}
+                    <p class="text-gray-500">No check-ins yet</p>
+                {% endif %}
+            </div>
+
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+                <h3 class="text-lg font-semibold text-gray-800 mb-3">Next Check-in</h3>
+                {% if next_checkin %}
+                    <p class="text-sm text-gray-600 mb-4">{{ next_checkin|date:"F d, Y" }}</p>
+                {% else %}
+                    <p class="text-sm text-gray-600 mb-4">Not scheduled</p>
+                {% endif %}
+                
+                {% if can_checkin %}
+                    <a href="{% url 'aura:checkin' %}" class="inline-block w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors text-center shadow-md">
+                        Start Check-in with Aura
+                    </a>
+                {% else %}
+                    <button disabled class="w-full bg-gray-300 text-gray-500 font-semibold py-3 px-6 rounded-lg cursor-not-allowed">
+                        Next check-in: {{ next_checkin|date:"M d" }}
+                    </button>
+                    <p class="text-xs text-gray-500 mt-2 text-center">You can still check in early if needed</p>
+                    <a href="{% url 'aura:checkin' %}" class="inline-block w-full mt-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium py-2 px-6 rounded-lg transition-colors text-center text-sm">
+                        Check in early
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const historyData = {{ history|safe }};
+        
+        const ctx = document.getElementById('balanceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: historyData.map(h => new Date(h.timestamp).toLocaleDateString()),
+                datasets: [{
+                    label: 'Balance',
+                    data: historyData.map(h => parseFloat(h.estimated_total)),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

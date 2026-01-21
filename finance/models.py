@@ -1,77 +1,101 @@
-# from django.conf import settings
-# from django.db import models
-
-# User = settings.AUTH_USER_MODEL
-
-# class FinancialProfile(models.Model):
-#     user = models.OneToOneField(
-#         User,
-#         on_delete=models.CASCADE,
-#         related_name="financial_profile"
-#     )
-
-#     estimated_balance = models.DecimalField(
-#         max_digits=12,
-#         decimal_places=2,
-#         null=True,
-#         blank=True
-#     )
-
-#     primary_goal = models.CharField(
-#         max_length=255
-#     )
+from django.conf import settings
+from django.db import models
 
 
-#     # Flexible, AI-friendly context
-#     financial_context = models.JSONField(
-#         default=dict,
-#         blank=True
-#     )
+class FinancialProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="financial_profile"
+    )
 
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     updated_at = models.DateTimeField(auto_now=True)
+    estimated_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    primary_goal = models.CharField(
+        max_length=255
+    )
+
+
+    # Flexible, AI-friendly context
+    financial_context = models.JSONField(
+        default=dict,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class FinanceHistory(models.Model):
+    profile = models.ForeignKey(FinancialProfile, on_delete=models.CASCADE, related_name='history')
+    estimated_total = models.DecimalField(max_digits=12, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True) # The "Time" axis for your graph
+
+    class Meta:
+        ordering = ['timestamp']
 
 
 
+class CheckIn(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="checkins"
+    )
 
-# class CheckIn(models.Model):
-#     user = models.ForeignKey(
-#         User,
-#         on_delete=models.CASCADE,
-#         related_name="check_ins"
-#     )
+    created_at = models.DateTimeField(auto_now_add=True)
 
-#     # When this check-in happened
-#     check_in_at = models.DateTimeField(auto_now_add=True)
+    # Snapshot of financial state at check-in time
+    estimated_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
 
-#     # Aura’s qualitative assessment
-#     budget_health = models.CharField(
-#         max_length=50,
-#         choices=[
-#             ("on_track", "On Track"),
-#             ("slightly_off", "Slightly Off"),
-#             ("off_track", "Off Track"),
-#             ("unclear", "Unclear"),
-#         ]
-#     )
+    # User-reported updates during the session
+    user_update = models.JSONField(
+        help_text="What the user said during this check-in",
+        default=dict,
+        blank=True
+    )
 
-#     # Optional user-reported changes
-#     reported_balance_change = models.DecimalField(
-#         max_digits=12,
-#         decimal_places=2,
-#         null=True,
-#         blank=True
-#     )
+    # Aura’s interpretation + summary
+    summary = models.TextField(
+        help_text="Aura’s concise summary of the check-in"
+    )
 
-#     # Flexible conversational summary
-#     check_in_context = models.JSONField(
-#         default=dict,
-#         blank=True
-#     )
+    # Actionable advice given by Aura
+    advice = models.TextField(
+        help_text="Guidance Aura gave the user"
+    )
 
-#     # One-sentence Aura insight shown on dashboard
-#     aura_insight = models.CharField(
-#         max_length=255
-#     )
+    # Main focus until next check-in
+    focus_until_next = models.CharField(
+        max_length=255,
+        help_text="Single primary financial focus"
+    )
 
-#     created_at = models.DateTimeField(auto_now_add=True)
+    # Aura’s confidence level about the data
+    confidence_score = models.PositiveSmallIntegerField(
+        help_text="0–100 confidence in data accuracy",
+        default=80
+    )
+
+    # Optional metadata (flags, risk signals, etc.)
+    metadata = models.JSONField(
+        default=dict,
+        blank=True
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"CheckIn({self.user}, {self.created_at.date()})"
+
